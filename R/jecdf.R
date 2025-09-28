@@ -162,7 +162,10 @@ densdf <- function(df,nobs){
 		max_x <- max(x[,1])
 		expanded_x <- c(min_x:max_x)
 		densities_zero <- cbind(expanded_x,rep(0,length(expanded_x)))
-		densities_zero[which(densities_zero[,1] %in% x[,1]),2]<-x[,2]
+		# safer replacement using match, it was:
+		# densities_zero[which(densities_zero[,1] %in% x[,1]),2]<-x[,2]
+		idx <- match(x[,1], densities_zero[,1])
+		densities_zero[idx[!is.na(idx)], 2] <- x[!is.na(idx), 2]
 		data.frame(value=densities_zero[,1],dens=densities_zero[,2])
 	})
    return(densities)
