@@ -1,3 +1,5 @@
+library(raster)
+
 #' knownsiteCoords
 #'
 #' Calculates the probability of a union of independent events using the
