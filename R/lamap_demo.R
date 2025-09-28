@@ -1,7 +1,6 @@
-# Simple LAMAP R Demo
-# This script demonstrates the LAMAP algorithm with minimal example
+# R LAMAP Demo - Same Data as Python Demo
+# This creates identical synthetic data to the Python notebook for direct comparison
 
-# Load required library
 library(raster)
 
 # Source LAMAP functions
@@ -11,31 +10,85 @@ source("/home/azureuser/localfiles/otros/lamap/R/jecdf.R")
 source("/home/azureuser/localfiles/otros/lamap/R/weight.R")
 source("/home/azureuser/localfiles/otros/lamap/R/unionIndependent.R")
 
-cat("=== Simple LAMAP Demo ===\n")
+cat("=== R LAMAP Demo - Same Data as Python ===\n")
 
-# Create simple known site data
-# Format: id, x, y, elevation, slope, dist_water
-known_site_data <- data.frame(
-  id = c(rep("Site1", 5), rep("Site2", 5), rep("Site3", 5)),
-  x = c(100, 101, 102, 99, 103,   # Site 1 catchment
-        150, 151, 149, 152, 148,  # Site 2 catchment  
-        200, 201, 202, 199, 203), # Site 3 catchment
-  y = c(100, 101, 99, 102, 98,    # Site 1 catchment
-        150, 149, 151, 148, 152,  # Site 2 catchment
-        200, 199, 201, 198, 202), # Site 3 catchment
-  elevation = c(150, 155, 152, 148, 153,  # Site 1: moderate elevation
-                180, 175, 185, 178, 182,  # Site 2: higher elevation
-                120, 115, 125, 118, 122), # Site 3: lower elevation
-  slope = c(0.5, 0.8, 0.6, 0.4, 0.7,     # Site 1: gentle slopes
-            1.2, 1.5, 1.0, 1.3, 1.1,     # Site 2: steeper slopes
-            0.2, 0.3, 0.1, 0.4, 0.2),    # Site 3: very gentle
-  dist_water = c(200, 180, 220, 190, 210, # Site 1: near water
-                 500, 480, 520, 490, 510, # Site 2: moderate distance
-                 50, 40, 60, 45, 55)      # Site 3: very close to water
+# Create synthetic terrain (same as Python: 80x100 grid)
+H <- 80
+W <- 100
+
+# Create coordinate grids (same as Python)
+ygrid <- outer(rep(1, W), 1:H - 0.5)
+xgrid <- outer(1:W - 0.5, rep(1, H))
+
+# Generate elevation (same formula as Python)
+elev <- 120 + 0.35 * xgrid + 0.15 * ygrid + 8 * sin(xgrid/15.0) + 5 * cos(ygrid/21.0)
+
+# Calculate slope (simplified gradient)
+slope <- matrix(0, nrow = H, ncol = W)
+for(i in 2:(H-1)) {
+  for(j in 2:(W-1)) {
+    dx <- (elev[i, j+1] - elev[i, j-1]) / 2
+    dy <- (elev[i+1, j] - elev[i-1, j]) / 2
+    slope[i, j] <- sqrt(dx^2 + dy^2)
+  }
+}
+
+# Create synthetic river and distance to water
+river_y <- H/2 + 10 * sin(seq(0, 3*pi, length.out = W))
+d2w <- matrix(0, nrow = H, ncol = W)
+for(i in 1:H) {
+  for(j in 1:W) {
+    d2w[i, j] <- abs(i - river_y[j])  # Distance to river
+  }
+}
+
+cat("Created synthetic terrain: 80x100 grid\n")
+cat(sprintf("Elevation range: %.1f - %.1f\n", min(elev), max(elev)))
+cat(sprintf("Slope range: %.2f - %.2f\n", min(slope), max(slope)))
+cat(sprintf("Distance to water range: %.1f - %.1f\n", min(d2w), max(d2w)))
+
+# Create the same 5 sites as Python (A, B, C, D, E)
+sites <- data.frame(
+  id = c('A', 'B', 'C', 'D', 'E'),
+  x = c(20.0, 70.0, 50.0, 30.0, 85.0),
+  y = c(25.0, 35.0, 60.0, 10.0, 65.0)
 )
 
-cat("Created 3 sites with 5 catchment samples each\n")
-print(head(known_site_data, 9))
+# Generate catchment data around each site (radius = 15)
+catchment_radius <- 15
+known_site_data <- data.frame()
+
+for(site_idx in 1:nrow(sites)) {
+  site_x <- sites$x[site_idx]
+  site_y <- sites$y[site_idx]
+  site_id <- sites$id[site_idx]
+  
+  # Sample within catchment radius
+  for(dx in -catchment_radius:catchment_radius) {
+    for(dy in -catchment_radius:catchment_radius) {
+      if(sqrt(dx^2 + dy^2) <= catchment_radius) {
+        sample_x <- round(site_x) + dx
+        sample_y <- round(site_y) + dy
+        
+        # Check bounds
+        if(sample_x >= 1 && sample_x <= W && sample_y >= 1 && sample_y <= H) {
+          site_sample <- data.frame(
+            id = site_id,
+            x = sample_x,
+            y = sample_y,
+            elevation = round(elev[sample_y, sample_x], 1),
+            slope = round(slope[sample_y, sample_x], 2),
+            dist_water = round(d2w[sample_y, sample_x], 1)
+          )
+          known_site_data <- rbind(known_site_data, site_sample)
+        }
+      }
+    }
+  }
+}
+
+cat(sprintf("Created %d sites with %d catchment samples total\n", 
+            nrow(sites), nrow(known_site_data)))
 
 # Process for LAMAP
 site_coords <- knownsiteCoords(known_site_data)
@@ -50,19 +103,20 @@ print(site_coords)
 # Create probability density functions
 site_pcdfs <- knownsitePcdfs(known_site_data)
 
-# Define integration steps
-steps <- c(10, 0.5, 100)  # elevation, slope, dist_water
+# Define integration steps (same as Python: eps values)
+steps <- c(10.0, 0.1, 10.0)  # elevation, slope, dist_water
+cat("Integration steps:", steps, "\n")
 
-# Test 3 locations
+# Test a few specific locations
 test_locations <- data.frame(
-  x = c(125, 175, 175),
-  y = c(125, 175, 125),
-  elevation = c(160, 190, 140),
-  slope = c(0.6, 1.4, 0.8),
-  dist_water = c(150, 400, 600)
+  x = c(25, 50, 75),
+  y = c(30, 45, 60),
+  elevation = c(elev[30, 25], elev[45, 50], elev[60, 75]),
+  slope = c(slope[30, 25], slope[45, 50], slope[60, 75]),
+  dist_water = c(d2w[30, 25], d2w[45, 50], d2w[60, 75])
 )
 
-cat("\n=== LAMAP Results ===\n")
+cat("\n=== LAMAP Results (R Implementation) ===\n")
 for(i in 1:nrow(test_locations)) {
   test_loc <- test_locations[i, ]
   
@@ -70,7 +124,10 @@ for(i in 1:nrow(test_locations)) {
     observed = test_loc,
     knownsite_pcdfs = site_pcdfs,
     knownsite_coords = site_coords,
-    steps = steps
+    steps = steps,
+    maxsites = 5,
+    weightfun = "exponential",
+    weightparams = c(0.25, 100)
   )
   
   cat(sprintf("Location %d: (%.0f,%.0f) LAMAP = %.4f\n", 
