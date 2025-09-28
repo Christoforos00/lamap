@@ -5,11 +5,11 @@
 library(raster)
 
 # Source LAMAP functions
-source("/home/azureuser/localfiles/otros/lamap/R/lamap.R")
-source("/home/azureuser/localfiles/otros/lamap/R/utils.R")
-source("/home/azureuser/localfiles/otros/lamap/R/jecdf.R")
-source("/home/azureuser/localfiles/otros/lamap/R/weight.R")
-source("/home/azureuser/localfiles/otros/lamap/R/unionIndependent.R")
+source("./R/lamap.R")
+source("./R/utils.R")
+source("./R/jecdf.R")
+source("./R/weight.R")
+source("./R/unionIndependent.R")
 
 cat("=== Simple LAMAP Demo ===\n")
 
