@@ -17,8 +17,8 @@ H <- 80
 W <- 100
 
 # Create coordinate grids (same as Python)
-ygrid <- outer(rep(1, W), 1:H - 0.5)
-xgrid <- outer(1:W - 0.5, rep(1, H))
+ygrid <- outer(1:H - 0.5, rep(1, W))
+xgrid <- outer(rep(1, H), 1:W - 0.5)
 
 # Generate elevation (same formula as Python)
 elev <- 120 + 0.35 * xgrid + 0.15 * ygrid + 8 * sin(xgrid/15.0) + 5 * cos(ygrid/21.0)
